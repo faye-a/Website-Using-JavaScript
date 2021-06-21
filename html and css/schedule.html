@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+   <link rel="stylesheet" href="sample.css" />
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule</title>
+ </head>
+<body>
+<div id="page-container">
+    <header>
+            <div class="logo">
+                <a href='home.html'><img src="/Images/chi2020.png" alt="CHI logo 2020" style="width: 200px; height: 110px;"></a>
+            </div>
+            <nav>
+                <div id="navbar">
+                    <ul>
+                        <li><a href="schedule.html">About</a></li>
+                        <li><a href="schedule.html">Attendees</a></li>
+                    </ul>
+                </div>
+            </nav>
+    </header>
+    <main>
+    <h1>CHI 2020 Schedule</h1>
+    <div id='displayDate'>...</div>
+    <div id='displayTime'>...</div>
+    <div id='radio-filter'>
+        <br><br>
+        <form>
+            <input type="radio" id="allTypes" name="types" value="all_type" onclick="showAllPaperType()">
+            <label for="allTypes">All Types</label><br>
+            <input type="radio" id="paperType" name="types" value="paper" onclick="showPaperType()">
+            <label for="paperType">Paper Types</label><br>
+            <input type="radio" id="nonPaperType" name="types" value="non_paper" onclick="showNonPaperType()">
+            <label for="nonPaperType">Non Paper Types</label>
+        </form> 
+        <br><br>
+    </div>
+    <div id='infoSession' style='display: none;'>...</div>
+    <div id='paper' style='display: none;'>...</div>
+    <div id='non-paper' style="display: none;">...</div>
+    <div id='submissionInfo' style="display: none;">...</div>
+</main>
+<footer id="footer">
+ made by Faye Arejola 16475762.
+</footer>
+</div>
+    
+<script>  
+    var parsedObj; 
+    var xmlhttp = new XMLHttpRequest();
+    var url = "scheduling.json";   
+    xmlhttp.onreadystatechange = function() {
+    if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+        //Parse the JSON data to a JavaScript variable. 
+        parsedObj = JSON.parse(xmlhttp.responseText);
+        displayingDate(parsedObj);
+        displayingTime(parsedObj);
+    }      
+};
+    xmlhttp.open("GET", url, true);
+    xmlhttp.send();
+    
+    //function to get the data displayed in a drop down menu
+    function displayingDate(obj) {
+        let jsonarray, date, day, dateDayOut; 
+        jsonarray = obj;
+        //creating a drown down menu for the dates and day
+        dateDayOut = "<label for='dates-selector'>Choose a Date: </label>" 
+        + "<select name='dates' id='dates' onchange='displayingTime(parsedObj)'>" 
+        + "<option value=''>Select Date</option>";
+        
+        for (var i = 0; i < jsonarray.length; i++) {
+            date = jsonarray[i].date;
+            day = jsonarray[i].day;
+            //putting date and day into the dropdown menu
+            dateDayOut += "<option value=" + date + ">" + date + " " + day + "</option><br>";
+        }
+        dateDayOut += "</select><br><br>";
+        document.getElementById('displayDate').innerHTML = dateDayOut;
+    }   
+    
+    //function to get the time information for the particular days
+    function displayingTime(obj) {
+        let jsonarray = obj;
+        let timeOut, i, totalSlots, time, selectedDate;
+        selectedDate = document.getElementById('dates').value;
+        //constructing drop down menu to display times
+        timeOut = "<label for='times-selector'>Choose a Time: </label>" 
+        + "<select name='times' id='times'>" 
+        + "<option value='select_all'>Select Time</option>";
+        for (i = 0; i < jsonarray.length; i++) {
+            totalSlots = jsonarray[i].slots;
+            for (var key in totalSlots) {
+                if (totalSlots[key].sessions.length > 0) {
+                    if (selectedDate == jsonarray[i].date) {
+                    time = totalSlots[key].time;
+                     timeOut +=  "<option value=" + time + ">" + time + "</option><br>";
+                    }
+                }
+            }
+        }
+        //placing the times into the dropdown menu
+        timeOut += "</select><br><br><input type='submit' onclick='showSessionInfo()' value='Submit'>";
+        document.getElementById('displayTime').innerHTML = timeOut;
+    }
+    
+    //function to call function sessionInfo when clicked
+    function showSessionInfo() {
+        if (document.getElementById('infoSession').style.display === "none") {
+             document.getElementById('infoSession').style.display = "block";
+                sessionInfo(parsedObj);
+        }
+        else {
+             document.getElementById('infoSession').style.display = "block";
+                sessionInfo(parsedObj);
+        }
+    }
+    //function to put all of the information sessions eg. title, start time, location and type
+    function sessionInfo(obj) {
+        let jsonarray = obj;
+        let infoSesh, selectedDate, selectedTime, totalSlots, totalSessions, editTime, editedTime;
+        selectedDate = document.getElementById('dates').value;
+        selectedTime = document.getElementById('times').value;
+        //constructing a table to display the following information (refer to <th>)
+        infoSesh = "<table><tr>" + "<th>Date</th>" + "<th>Title</th>" + 
+            "<th>Start Time</th>" + "<th>Location</th>" + "<th>Type</th></tr>" ;
+    
+        for (var i = 0; i < jsonarray.length; i++) {
+                totalSlots = jsonarray[i].slots;
+                for (var key in totalSlots) {
+                    totalSessions = totalSlots[key].sessions;
+                    for (var j = 0; j < totalSessions.length; j++) {
+                        totalSubmissions = totalSessions[j].submissions;
+                        //if statement to determine match the date selected
+                           if (selectedDate == jsonarray[i].date) {
+                               //removing :00 so it mathches selectedTime using RegEx
+                               editTime = totalSessions[j].time;
+                               editedTime = editTime.replace(/:00$/, "");
+                               if (selectedTime == editedTime || selectedTime == 'select_all' ) {
+                                infoSesh += "<tr>" + "<td>" + jsonarray[i].date + "</td>" 
+                                + "<td>" + totalSessions[j].title
+                                //placing a button to call to show submissions information at the very bottom.
+                                + "<a href='#submissionInfo'><button type='submit' id=" + totalSessions[j].sessionId 
+                                + " value =" + totalSessions[j].sessionId + " onclick='showSubmissionInfo(this.id, parsedObj)'>" 
+                                + "Submissions</button></a>" + "</td>" 
+                                + "<td>" + totalSessions[j].time + "</td>"
+                                + "<td>" + totalSessions[j].room + "</td>"
+                                + "<td>" + totalSessions[j].type + "</td>" + "</tr>"; 
+                                }
+                              }
+                            }     
+                          }  
+                        }
+        infoSesh += "</table>";
+        document.getElementById('infoSession').innerHTML = infoSesh;
+        }
+    //calling displayPaperType function
+    function showPaperType() {
+        if (document.getElementById('paper').style.display == "none") {
+            //using if statement to ensure that the other tables are hidden while the 
+            //selected table to filter is shown
+            document.getElementById('infoSession').style.display = "none";
+            document.getElementById('paper').style.display = "block";
+            document.getElementById('non-paper').style.display = "none";
+            //function is then called to display paper type only schedules
+            displayPaperType(parsedObj);
+        }   
+    }
+    //function to display only paper type sessions
+    function displayPaperType(obj) {
+        let jsonarray = obj;
+        let infoPaper, selectedDate, selectedTime, totalSlots, totalSessions, editTime, editedTime, paper;
+        selectedDate = document.getElementById('dates').value;
+        selectedTime = document.getElementById('times').value;
+        paper = document.getElementById('paperType').value;
+        
+        infoPaper = "<table><tr>" + "<th>Date</th>" + "<th>Title</th>" + 
+            "<th>Start Time</th>" + "<th>Location</th>" + "<th>Type</th></tr>" ;
+    
+        for (var i = 0; i < jsonarray.length; i++) {
+                totalSlots = jsonarray[i].slots;
+                for (var key in totalSlots) {
+                    totalSessions = totalSlots[key].sessions;
+                    for (var j = 0; j < totalSessions.length; j++) {
+                        totalSubmissions = totalSessions[j].submissions;
+                           if (selectedDate == jsonarray[i].date) {
+                               editTime = totalSessions[j].time;
+                               editedTime = editTime.replace(/:00$/, "");
+                               if (selectedTime == editedTime || selectedTime == 'select_all' ) {
+                                   if (paper == totalSessions[j].type) {
+                                    infoPaper += "<tr>" + "<td>" + jsonarray[i].date + "</td>" 
+                                    + "<td>" + totalSessions[j].title
+                                    //placing a button to call to show submissions information at the very bottom.
+                                    + "<a href='#submissionInfo'><button type='submit' id=" + totalSessions[j].sessionId
+                                    + " value =" + totalSessions[j].sessionId + " onclick='showSubmissionInfo(this.id, parsedObj)'>" 
+                                    + "Submissions</button></a>" + "</td>" 
+                                    + "<td>" + totalSessions[j].time + "</td>"
+                                    + "<td>" + totalSessions[j].room + "</td>"
+                                    + "<td>" + totalSessions[j].type + "</td></tr>"; 
+                                   }
+                                 } 
+                               }
+                             }     
+                           }  
+                         }
+        infoPaper += "</table>";
+        document.getElementById('paper').innerHTML = infoPaper;
+        }
+    //calling to function displayNonPaperType
+     function showNonPaperType() {
+        if (document.getElementById('non-paper').style.display == "none") {
+            //using if statements to hide non selected and call 
+            // to display non paper type schedules only
+            document.getElementById('infoSession').style.display = "none";
+            document.getElementById('paper').style.display = "none";
+            document.getElementById('non-paper').style.display = "block";
+            displayNonPaperType(parsedObj);
+        }
+    }
+    //function to display nonpaper type papers
+    function displayNonPaperType(obj) {
+        let jsonarray = obj;
+        let infoNonPaper, selectedDate, selectedTime, totalSlots, totalSessions, editTime, editedTime, paper;
+        selectedDate = document.getElementById('dates').value;
+        selectedTime = document.getElementById('times').value;
+        paper = document.getElementById('paperType').value;
+        infoNonPaper = "<table><tr>" + "<th>Date</th>" + "<th>Title</th>" + 
+            "<th>Start Time</th>" + "<th>Location</th>" + "<th>Type</th></tr>" ;
+    
+        for (var i = 0; i < jsonarray.length; i++) {
+                totalSlots = jsonarray[i].slots;
+                for (var key in totalSlots) {
+                    totalSessions = totalSlots[key].sessions;
+                    for (var j = 0; j < totalSessions.length; j++) {
+                        totalSubmissions = totalSessions[j].submissions;
+                           if (selectedDate == jsonarray[i].date) {
+                               editedTime = editTime.replace(/:00$/, "");
+                               if (selectedTime == editedTime || selectedTime == 'select_all' ) {
+                                   if (paper !== totalSessions[j].type) {
+                                infoNonPaper += "<tr>" + "<td>" + jsonarray[i].date + "</td>" 
+                                + "<td>" + totalSessions[j].title
+                                //placing a button to call to show submissions information at the very bottom.
+                                + "<a href='#submissionInfo'><button type='submit' id=" + totalSessions[j].sessionId
+                                + " value =" + totalSessions[j].sessionId + " onclick='showSubmissionInfo(this.id, parsedObj)'>" 
+                                + "Submissions</button></a>" + "</td>" 
+                                + "<td>" + totalSessions[j].time + "</td>"
+                                + "<td>" + totalSessions[j].room + "</td>"
+                                + "<td>" + totalSessions[j].type + "</td></tr>"; 
+                                   }
+                                 } 
+                               }
+                             }     
+                           }  
+                         }
+        infoNonPaper += "</table>";
+        document.getElementById('non-paper').innerHTML = infoNonPaper;
+        }
+    //calling to display sessionInfo to reveal all types
+    function showAllPaperType() {
+        if (document.getElementById('infoSession').style.display == "none") {
+            //if statement to show all paper types and calling the function
+            document.getElementById('infoSession').style.display = "block";
+            document.getElementById('paper').style.display = "none";
+            document.getElementById('non-paper').style.display = "none";
+            sessionInfo(parsedObj);
+        }
+    }
+    //function to display subinfo when clicked
+    function showSubmissionInfo(clicked_id, obj) {
+        let sessionId, jsonarray, infoSesh, selectedDate, selectedTime, totalSlots, totalSessions, totalSubmissions, editTime, editedTime, subOut, id, id_value;
+        selectedDate = document.getElementById('dates').value;
+        selectedTime = document.getElementById('times').value;
+        jsonarray = obj;
+        id = clicked_id;
+        id_value = document.getElementById(id).value;
+        
+        if (document.getElementById('submissionInfo').style.display == "none") {
+            document.getElementById('submissionInfo').style.display = "block";
+            subOut = "<details>" + "<summary> Submissions </summary><ul>";
+            for (var i = 0; i < jsonarray.length; i++) {
+                totalSlots = jsonarray[i].slots;
+                     
+                for (var key in totalSlots) {
+                    totalSessions = totalSlots[key].sessions;
+                    for (var j = 0; j < totalSessions.length; j++) {
+                        totalSubmissions = totalSessions[j].submissions;
+                        for (var k = 0; k < totalSubmissions.length; k++) {
+                           if (selectedDate == jsonarray[i].date) {
+                               editTime = totalSessions[j].time;
+                               editedTime = editTime.replace(/:00$/, "");
+                               if (selectedTime == editedTime || selectedTime == 'select_all' ) {
+                                   if (id_value == totalSessions[j].sessionId) {
+                                       subOut += "<li><a href=" + totalSubmissions[k].doiUrl + " target='_blank'>" + totalSubmissions[k].title + "</a></li>";
+                                }
+                            }
+                                   
+                        }
+                    }
+                }
+            }
+         }
+        subOut += "</ul></details>"
+        document.getElementById('submissionInfo').innerHTML = subOut;
+        }
+        //else statement so that when another submission button is clicked, the information will update
+        else {
+            subOut = "<details>" + "<summary> Submissions </summary><ul>";
+            for (var i = 0; i < jsonarray.length; i++) {
+                totalSlots = jsonarray[i].slots;    
+                for (var key in totalSlots) {
+                    totalSessions = totalSlots[key].sessions;
+                    for (var j = 0; j < totalSessions.length; j++) {
+                        totalSubmissions = totalSessions[j].submissions; 
+                        for (var k = 0; k < totalSubmissions.length; k++) {
+                           if (selectedDate == jsonarray[i].date) {
+                               //removing :00 so it mathches selectedTime using RegEx
+                               editTime = totalSessions[j].time;
+                               editedTime = editTime.replace(/:00$/, "");
+                               if (selectedTime == editedTime || selectedTime == 'select_all' ) {
+                                   if (id_value == totalSessions[j].sessionId) {
+                                       subOut += "<li><a href=" + totalSubmissions[k].doiUrl + " target='_blank'>" + totalSubmissions[k].title + "</a></li>";
+                                }
+                             }          
+                          }
+                       }
+                    }
+                }
+             }
+        subOut += "</ul></details>"
+        document.getElementById('submissionInfo').innerHTML = subOut;
+        }
+    }                          
+</script>
+</body>
+</html>
